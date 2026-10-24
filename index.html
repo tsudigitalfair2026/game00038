@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>ワニスロット</title>
+<style>
+*{
+    box-sizing:border-box;
+    -webkit-tap-highlight-color:transparent;
+    touch-action:none;
+}
+html,body{
+    margin:0;
+    width:100%;
+    height:100%;
+    overflow:hidden;
+    font-family:sans-serif;
+    background:linear-gradient(#9be15d,#00c9a7);
+}
+.screen{
+    width:100%;
+    height:100%;
+    display:none;
+    flex-direction:column;
+    justify-content:center;
+    align-items:center;
+    padding:16px;
+    text-align:center;
+}
+.active{
+    display:flex;
+}
+h1{
+    margin:10px 0;
+    color:#114b1d;
+}
+p{
+    color:#103f18;
+    line-height:1.5;
+}
+button{
+    border:none;
+    border-radius:16px;
+    padding:16px 24px;
+    font-size:20px;
+    font-weight:bold;
+    cursor:pointer;
+    min-width:180px;
+}
+.start-btn,.retry-btn{
+    background:#ffcc00;
+    color:#333;
+}
+.topbar{
+    width:100%;
+    display:flex;
+    justify-content:space-between;
+    font-size:22px;
+    font-weight:bold;
+    color:#fff;
+    margin-bottom:10px;
+}
+.slot-area{
+    width:100%;
+    max-width:420px;
+}
+.reels{
+    display:flex;
+    gap:8px;
+    justify-content:center;
+    margin-bottom:16px;
+}
+.reel{
+    width:30%;
+    aspect-ratio:1/1;
+    background:white;
+    border-radius:18px;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    font-size:58px;
+    box-shadow:0 4px 10px rgba(0,0,0,.2);
+}
+.controls{
+    display:flex;
+    gap:8px;
+    width:100%;
+}
+.stop-btn{
+    flex:1;
+    background:#ff6b35;
+    color:white;
+    min-width:0;
+    padding:18px 0;
+}
+.message{
+    margin-top:12px;
+    font-size:22px;
+    font-weight:bold;
+    color:#fff;
+    min-height:34px;
+}
+.result-score{
+    font-size:36px;
+    color:#fff;
+    font-weight:bold;
+}
+.rank{
+    font-size:52px;
+    margin:16px 0;
+    font-weight:bold;
+    color:#ffe600;
+    text-shadow:2px 2px 4px rgba(0,0,0,.3);
+}
+.small{
+    font-size:18px;
+}
+</style>
+</head>
+<body>
+
+<div id="startScreen" class="screen active">
+    <h1>🐊 ワニスロット 🐊</h1>
+    <p>
+        30秒でたくさんワニをそろえよう！<br>
+        下のボタンをタップして3つの絵柄を止めよう。<br>
+        同じ絵柄が3つそろうと得点ゲット！
+    </p>
+    <button class="start-btn" id="startBtn">ゲームスタート</button>
+</div>
+
+<div id="gameScreen" class="screen">
+    <div class="topbar">
+        <div>🏆 <span id="score">0</span></div>
+        <div>⏰ <span id="time">30</span></div>
+    </div>
+
+    <div class="slot-area">
+        <div class="reels">
+            <div class="reel" id="reel0">🐊</div>
+            <div class="reel" id="reel1">🐊</div>
+            <div class="reel" id="reel2">🐊</div>
+        </div>
+
+        <div class="controls">
+            <button class="stop-btn" id="btn0">STOP</button>
+            <button class="stop-btn" id="btn1">STOP</button>
+            <button class="stop-btn" id="btn2">STOP</button>
+        </div>
+
+        <div class="message" id="message"></div>
+    </div>
+</div>
+
+<div id="resultScreen" class="screen">
+    <h1>結果発表</h1>
+    <div class="result-score">スコア: <span id="finalScore">0</span></div>
+    <div class="rank" id="rank">C</div>
+    <div class="small" id="rankText"></div>
+    <br>
+    <button class="retry-btn" id="retryBtn">もう一度遊ぶ</button>
+</div>
+
+<script>
+const symbols = ["🐊","🐊","🐊","🐢","🐸","🦎","🐍"];
+const reels = [
+    document.getElementById("reel0"),
+    document.getElementById("reel1"),
+    document.getElementById("reel2")
+];
+
+const stopButtons = [
+    document.getElementById("btn0"),
+    document.getElementById("btn1"),
+    document.getElementById("btn2")
+];
+
+const startScreen = document.getElementById("startScreen");
+const gameScreen = document.getElementById("gameScreen");
+const resultScreen = document.getElementById("resultScreen");
+
+const scoreEl = document.getElementById("score");
+const timeEl = document.getElementById("time");
+const finalScoreEl = document.getElementById("finalScore");
+const rankEl = document.getElementById("rank");
+const rankTextEl = document.getElementById("rankText");
+const messageEl = document.getElementById("message");
+
+let score = 0;
+let time = 30;
+let timer = null;
+let reelIntervals = [];
+let stopped = [false,false,false];
+
+function randomSymbol(){
+    return symbols[Math.floor(Math.random()*symbols.length)];
+}
+
+function showScreen(screen){
+    startScreen.classList.remove("active");
+    gameScreen.classList.remove("active");
+    resultScreen.classList.remove("active");
+    screen.classList.add("active");
+}
+
+function startRound(){
+    stopped = [false,false,false];
+
+    reels.forEach((reel,index)=>{
+        stopButtons[index].disabled = false;
+
+        reelIntervals[index] = setInterval(()=>{
+            reel.textContent = randomSymbol();
+        },80 + index*20);
+    });
+
+    messageEl.textContent = "絵柄を止めよう！";
+}
+
+function checkResult(){
+    const a = reels[0].textContent;
+    const b = reels[1].textContent;
+    const c = reels[2].textContent;
+
+    if(a===b && b===c){
+        let add = (a==="🐊") ? 100 : 50;
+        score += add;
+        scoreEl.textContent = score;
+        messageEl.textContent = "🎉 +" + add + "点!";
+    }else{
+        messageEl.textContent = "おしい！";
+    }
+
+    setTimeout(()=>{
+        if(time > 0){
+            startRound();
+        }
+    },700);
+}
+
+function stopReel(index){
+    if(stopped[index]) return;
+
+    stopped[index] = true;
+    clearInterval(reelIntervals[index]);
+    stopButtons[index].disabled = true;
+
+    if(stopped.every(v=>v)){
+        checkResult();
+    }
+}
+
+function finishGame(){
+    clearInterval(timer);
+
+    finalScoreEl.textContent = score;
+
+    let rank = "C";
+    let text = "もう少しでワニ名人！";
+
+    if(score >= 1200){
+        rank = "S";
+        text = "伝説のワニキング！";
+    }else if(score >= 800){
+        rank = "A";
+        text = "すごいワニマスター！";
+    }else if(score >= 400){
+        rank = "B";
+        text = "なかなか上手！";
+    }
+
+    rankEl.textContent = rank;
+    rankTextEl.textContent = text;
+
+    showScreen(resultScreen);
+}
+
+function startGame(){
+    score = 0;
+    time = 30;
+
+    scoreEl.textContent = score;
+    timeEl.textContent = time;
+
+    showScreen(gameScreen);
+
+    startRound();
+
+    timer = setInterval(()=>{
+        time--;
+        timeEl.textContent = time;
+
+        if(time <= 0){
+            finishGame();
+        }
+    },1000);
+}
+
+document.getElementById("startBtn").addEventListener("click",startGame);
+document.getElementById("retryBtn").addEventListener("click",startGame);
+
+stopButtons.forEach((btn,index)=>{
+    btn.addEventListener("click",()=>stopReel(index));
+    btn.addEventListener("touchstart",(e)=>{
+        e.preventDefault();
+        stopReel(index);
+    },{passive:false});
+});
+
+document.addEventListener("gesturestart",e=>e.preventDefault());
+document.addEventListener("dblclick",e=>e.preventDefault());
+</script>
+
+</body>
+</html>
